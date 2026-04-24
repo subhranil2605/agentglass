@@ -354,6 +354,8 @@ def serialize(value: Any) -> Any:
 
 ## Submitting a Pull Request
 
+> For comprehensive PR guidance, see **[PULL_REQUEST_GUIDELINES.md](PULL_REQUEST_GUIDELINES.md)** — our detailed guide with the Glass philosophy on crafting clear, focused contributions.
+
 ### Before Submitting
 
 1. **Sync with main:**

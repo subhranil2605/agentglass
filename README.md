@@ -1,6 +1,6 @@
 # AgentGlass
 
-**A local, step-through visual debugger for LangGraph + Google Gemini agents.**
+**A local, step-through visual debugger for LangGraph agents.**
 
 AgentGlass renders your agent's execution as an interactive graph — live, in your browser, with zero cloud dependency. Step forward and backward through every node execution, inspect exact input/output state at each step, and see inside nodes: the LLM call, its token counts, model name, and every tool call it made. One `with` block. No login. No data leaves your machine.
 
@@ -197,7 +197,8 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for:
 - Development setup and architecture overview
 - Code style and testing guidelines
 - How to report bugs and propose features
-- Pull request process
+
+See **[PULL_REQUEST_GUIDELINES.md](PULL_REQUEST_GUIDELINES.md)** for our Glass-themed PR philosophy.
 
 ---
 
