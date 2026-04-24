@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>AgentGlass</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,400&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+  <style>
+    :root {
+      --paper: #f2ede3;
+      --paper-2: #e8e0d0;
+      --paper-3: #ddd4bf;
+      --ink: #18160f;
+      --ink-2: #48443a;
+      --ink-3: #8a8478;
+      --rule: #d4c9b0;
+      --accent: #b03a20;
+      --good: #2e6642;
+      --good-bg: #e4f0e8;
+      --warn: #a07010;
+      --warn-bg: #faf3dc;
+      --bad: #8a1e1e;
+      --bad-bg: #f5e4e4;
+      --active: #1d4ed8;
+      --active-bg: #e8eefb;
+      --active-bd: #b8cbf5;
+      --code-bg: #22201a;
+      --code-fg: #ede4d0;
+      --code-key: #d4a050;
+      --code-str: #82b074;
+      --code-num: #c05040;
+      --code-bool: #9468b0;
+      --step-node: #1d4ed8;
+      --step-done: #2e6642;
+      --hdr-h: 46px;
+      --bar-h: 44px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 13px
+    }
+
+    /* BRAND BAR */
+    #brand-bar {
+      height: var(--hdr-h);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--rule);
+      background: var(--paper);
+      flex-shrink: 0
+    }
+
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 8px
+    }
+
+    .brand h1 {
+      font-family: 'Fraunces', serif;
+      font-size: 22px;
+      font-weight: 500;
+      letter-spacing: -.02em;
+      font-variation-settings: "opsz" 144
+    }
+
+    .brand h1 em {
+      font-style: italic;
+      color: var(--accent);
+      font-weight: 400
+    }
+
+    .vtag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--ink-3);
+      border: 1px solid var(--rule);
+      padding: 2px 6px;
+      border-radius: 2px;
+      letter-spacing: .12em;
+      text-transform: uppercase
+    }
+
+    .run-status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--ink-3)
+    }
+
+    .run-status .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--ink-3)
+    }
+
+    .run-status.running .dot {
+      background: var(--warn);
+      animation: blink 1s infinite
+    }
+
+    .run-status.done .dot {
+      background: var(--good)
+    }
+
+    .run-status.error .dot {
+      background: var(--bad)
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .25
+      }
+    }
+
+    /* DEBUG TOOLBAR */
+    #debug-bar {
+      height: var(--bar-h);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border-bottom: 1.5px solid var(--rule);
+      background: var(--paper-2);
+      flex-shrink: 0;
+      padding: 0 10px;
+      overflow: hidden
+    }
+
+    .dbg-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding-right: 12px;
+      border-right: 1px solid var(--rule);
+      margin-right: 12px;
+      flex-shrink: 0
+    }
+
+    .dbg-btn {
+      height: 28px;
+      min-width: 28px;
+      border: 1px solid var(--rule);
+      background: var(--paper);
+      color: var(--ink-2);
+      cursor: pointer;
+      border-radius: 3px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 100ms;
+      padding: 0 6px
+    }
+
+    .dbg-btn:hover:not(:disabled) {
+      border-color: var(--ink-2);
+      color: var(--ink);
+      background: var(--paper-2)
+    }
+
+    .dbg-btn:disabled {
+      opacity: .3;
+      cursor: default
+    }
+
+    .dbg-btn.primary {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: var(--paper);
+      min-width: 32px;
+      font-size: 14px
+    }
+
+    .dbg-btn.primary:hover:not(:disabled) {
+      background: var(--ink-2)
+    }
+
+    .step-counter {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--ink-3);
+      flex-shrink: 0;
+      display: flex;
+      align-items: baseline;
+      gap: 2px;
+      margin-right: 10px
+    }
+
+    .step-counter .cur {
+      color: var(--step-node);
+      font-size: 15px;
+      font-weight: 600
+    }
+
+    .step-counter .sep {
+      color: var(--rule)
+    }
+
+    .step-node-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background: var(--active-bg);
+      color: var(--step-node);
+      border: 1px solid var(--active-bd);
+      flex-shrink: 0;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .step-node-pill.empty {
+      background: transparent;
+      color: var(--ink-3);
+      border-color: var(--rule)
+    }
+
+    .tl-track {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      overflow-x: auto;
+      padding: 0 8px;
+      gap: 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--rule) transparent;
+      height: 100%
+    }
+
+    .tl-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      cursor: pointer;
+      position: relative;
+      padding: 0 4px
+    }
+
+    .tl-item:not(:first-child)::before {
+      content: '';
+      position: absolute;
+      top: 13px;
+      right: 50%;
+      width: 100%;
+      height: 2px;
+      background: var(--rule);
+      z-index: 0;
+      pointer-events: none
+    }
+
+    .tl-item.done::before {
+      background: var(--step-done)
+    }
+
+    .tl-item.active::before {
+      background: var(--step-node)
+    }
+
+    .tl-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--rule);
+      background: var(--paper);
+      position: relative;
+      z-index: 1;
+      transition: all 140ms;
+      flex-shrink: 0
+    }
+
+    .tl-item.done .tl-dot {
+      background: var(--step-done);
+      border-color: var(--step-done)
+    }
+
+    .tl-item.active .tl-dot {
+      background: var(--step-node);
+      border-color: var(--step-node);
+      box-shadow: 0 0 0 3px var(--active-bg)
+    }
+
+    .tl-item.error .tl-dot {
+      background: var(--bad);
+      border-color: var(--bad)
+    }
+
+    .tl-item:hover .tl-dot {
+      transform: scale(1.2)
+    }
+
+    .tl-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8px;
+      margin-top: 3px;
+      color: var(--ink-3);
+      max-width: 56px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transition: color 140ms;
+      pointer-events: none
+    }
+
+    .tl-item.active .tl-name {
+      color: var(--step-node);
+      font-weight: 600
+    }
+
+    .tl-item.done .tl-name {
+      color: var(--step-done)
+    }
+
+    .graph-btns {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+      padding-left: 12px;
+      border-left: 1px solid var(--rule);
+      margin-left: 8px
+    }
+
+    .kbd-hint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--ink-3);
+      flex-shrink: 0;
+      padding-left: 10px;
+      border-left: 1px solid var(--rule);
+      margin-left: 4px;
+      line-height: 1.8;
+      display: flex;
+      flex-direction: column
+    }
+
+    .kbd {
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      padding: 0 3px;
+      background: var(--paper)
+    }
+
+    /* LAYOUT */
+    #layout {
+      display: flex;
+      height: calc(100vh - var(--hdr-h) - var(--bar-h))
+    }
+
+    #graph-pane {
+      flex: 1;
+      min-width: 0;
+      border-right: 1.5px solid var(--rule);
+      position: relative
+    }
+
+    #cy {
+      position: absolute;
+      inset: 0
+    }
+
+    /* INSPECTOR */
+    #inspect {
+      width: 42%;
+      min-width: 380px;
+      max-width: 660px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden
+    }
+
+    .insp-hdr {
+      height: 46px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--rule);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0
+    }
+
+    .insp-node-name {
+      font-family: 'Fraunces', serif;
+      font-size: 19px;
+      font-weight: 500;
+      letter-spacing: -.01em;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .insp-node-name em {
+      font-style: italic;
+      color: var(--accent);
+      font-weight: 400
+    }
+
+    .step-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      background: var(--active-bg);
+      color: var(--step-node);
+      border: 1px solid var(--active-bd)
+    }
+
+    .step-badge.error {
+      background: var(--bad-bg);
+      color: var(--bad);
+      border-color: #e8b0b0
+    }
+
+    /* LLM STRIP */
+    #llm-strip {
+      display: none;
+      padding: 7px 16px;
+      background: var(--paper-2);
+      border-bottom: 1px solid var(--rule);
+      flex-wrap: wrap;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px
+    }
+
+    #llm-strip.visible {
+      display: flex
+    }
+
+    .llm-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px 3px 8px;
+      border-right: 1px solid var(--rule);
+      color: var(--ink-2);
+      white-space: nowrap
+    }
+
+    .llm-chip:last-child {
+      border-right: none
+    }
+
+    .llm-chip .lbl {
+      color: var(--ink-3);
+      margin-right: 2px
+    }
+
+    .model-name {
+      color: var(--active);
+      font-weight: 600
+    }
+
+    .tok-in {
+      color: var(--good)
+    }
+
+    .tok-out {
+      color: var(--accent)
+    }
+
+    .tok-tot {
+      color: var(--ink-2);
+      font-weight: 600
+    }
+
+    /* TOOL STRIP */
+    #tool-strip {
+      display: none;
+      flex-direction: column;
+      border-bottom: 1px solid var(--rule);
+      background: var(--paper)
+    }
+
+    #tool-strip.visible {
+      display: flex
+    }
+
+    .tool-call-row {
+      display: flex;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--rule);
+      font-family: 'JetBrains Mono', monospace
+    }
+
+    .tool-call-row:last-child {
+      border-bottom: none
+    }
+
+    .tc-icon {
+      padding: 7px 10px;
+      color: var(--accent);
+      font-size: 12px;
+      flex-shrink: 0
+    }
+
+    .tc-body {
+      flex: 1;
+      min-width: 0;
+      padding: 7px 10px 7px 0
+    }
+
+    .tc-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 3px
+    }
+
+    .tc-args {
+      font-size: 10px;
+      color: var(--ink-2);
+      background: var(--paper-2);
+      padding: 4px 8px;
+      border-radius: 3px;
+      overflow-x: auto;
+      white-space: pre
+    }
+
+    /* INSPECTOR BODY */
+    #insp-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 16px
+    }
+
+    .empty-state {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--ink-3);
+      text-align: center
+    }
+
+    .empty-state .big {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-size: 24px;
+      color: var(--ink-2);
+      line-height: 1.2
+    }
+
+    .empty-state .hint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 10px 16px;
+      background: var(--paper-2);
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      line-height: 1.8
+    }
+
+    .io-block {
+      margin-bottom: 18px
+    }
+
+    .io-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: .2em;
+      color: var(--ink-3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7px
+    }
+
+    .io-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--rule)
+    }
+
+    .io-label .badge {
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 8px;
+      text-transform: none;
+      letter-spacing: 0
+    }
+
+    .io-label .badge.in {
+      background: var(--active-bg);
+      color: var(--active);
+      border: 1px solid var(--active-bd)
+    }
+
+    .io-label .badge.out {
+      background: var(--good-bg);
+      color: var(--good);
+      border: 1px solid #b0d4be
+    }
+
+    .io-label .badge.err {
+      background: var(--bad-bg);
+      color: var(--bad);
+      border: 1px solid #e0b0b0
+    }
+
+    .visit-info {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--ink-3);
+      margin-bottom: 14px;
+      padding: 6px 10px;
+      background: var(--paper-2);
+      border-left: 3px solid var(--step-node);
+      border-radius: 0 3px 3px 0
+    }
+
+    .visit-info strong {
+      color: var(--step-node)
+    }
+
+    .error-block {
+      background: #201818;
+      color: #e8c4b8;
+      border-left: 3px solid var(--bad);
+      padding: 10px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      border-radius: 0 3px 3px 0;
+      line-height: 1.55;
+      margin-bottom: 14px
+    }
+
+    .json-box {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      line-height: 1.6;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 10px 12px;
+      border-radius: 4px;
+      overflow-x: auto
+    }
+
+    .json-box .k {
+      color: var(--code-key)
+    }
+
+    .json-box .s {
+      color: var(--code-str)
+    }
+
+    .json-box .n {
+      color: var(--code-num)
+    }
+
+    .json-box .b {
+      color: var(--code-bool)
+    }
+
+    .json-box .nl {
+      color: var(--ink-3);
+      font-style: italic
+    }
+
+    .json-box details>summary {
+      cursor: pointer;
+      list-style: none;
+      outline: none
+    }
+
+    .json-box details>summary::before {
+      content: "▸ ";
+      color: var(--ink-3)
+    }
+
+    .json-box details[open]>summary::before {
+      content: "▾ "
+    }
+
+    .json-box .nested {
+      padding-left: 14px
+    }
+
+    .json-box .muted {
+      color: var(--ink-3);
+      font-style: italic
+    }
+
+    .chat-wrap {
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      overflow: hidden
+    }
+
+    .chat-turn {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--rule)
+    }
+
+    .chat-turn:last-child {
+      border-bottom: none
+    }
+
+    .chat-turn .role {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: .15em;
+      margin-bottom: 4px
+    }
+
+    .chat-turn.user .role {
+      color: var(--accent)
+    }
+
+    .chat-turn.model .role {
+      color: var(--good)
+    }
+
+    .chat-turn.tool .role {
+      color: var(--warn)
+    }
+
+    .chat-turn .text {
+      font-size: 12.5px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word
+    }
+
+    .chat-turn .fcall {
+      margin-top: 5px;
+      padding: 6px 9px;
+      background: var(--paper-2);
+      border-left: 3px solid var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px
+    }
+
+    .chat-turn .fcall .fn {
+      color: var(--accent);
+      font-weight: 600
+    }
+
+    .chat-turn .fcall.resp {
+      border-left-color: var(--good)
+    }
+
+    .chat-turn .fcall.resp .fn {
+      color: var(--good)
+    }
+
+    .chat-turn .finish-warn {
+      margin-top: 5px;
+      padding: 3px 7px;
+      background: var(--bad-bg);
+      color: var(--bad);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      border-radius: 3px
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid var(--rule);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--ink-3)
+    }
+
+    .meta-row .mk {
+      color: var(--ink-2);
+      margin-right: 3px
+    }
+
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--rule);
+      border-radius: 4px
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--ink-3)
+    }
+
+    #waiting {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: var(--paper);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      transition: opacity 400ms
+    }
+
+    #waiting .w-logo {
+      font-family: 'Fraunces', serif;
+      font-size: 40px;
+      font-weight: 400;
+      letter-spacing: -.02em;
+      font-variation-settings: "opsz" 144
+    }
+
+    #waiting .w-logo em {
+      font-style: italic;
+      color: var(--accent)
+    }
+
+    #waiting .w-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--ink-3);
+      letter-spacing: .12em;
+      text-transform: uppercase
+    }
+
+    #waiting .w-dots {
+      display: flex;
+      gap: 5px
+    }
+
+    #waiting .w-dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--rule);
+      animation: dp 1.2s ease-in-out infinite
+    }
+
+    #waiting .w-dots span:nth-child(2) {
+      animation-delay: .2s
+    }
+
+    #waiting .w-dots span:nth-child(3) {
+      animation-delay: .4s
+    }
+
+    @keyframes dp {
+
+      0%,
+      100% {
+        background: var(--rule)
+      }
+
+      50% {
+        background: var(--ink-3)
+      }
+    }
+
+    #waiting.hidden {
+      opacity: 0;
+      pointer-events: none
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="waiting">
+    <div class="w-logo">Agent<em>Glass</em></div>
+    <div class="w-sub">Waiting for run</div>
+    <div class="w-dots"><span></span><span></span><span></span></div>
+  </div>
+
+  <div id="brand-bar">
+    <div class="brand">
+      <h1>Agent<em>Glass</em></h1><span class="vtag">debugger</span>
+    </div>
+    <div class="run-status idle" id="run-status">
+      <span class="dot"></span><span id="run-status-text">waiting for run</span>
+    </div>
+  </div>
+
+  <div id="debug-bar">
+    <div class="dbg-group">
+      <button class="dbg-btn" id="btn-first" title="First (Home)">&#x23EE;</button>
+      <button class="dbg-btn primary" id="btn-prev" title="Back (&larr;)">&#x25C0;</button>
+      <button class="dbg-btn primary" id="btn-next" title="Forward (&rarr;)">&#x25B6;</button>
+      <button class="dbg-btn" id="btn-last" title="Last (End)">&#x23ED;</button>
+    </div>
+    <div class="step-counter">
+      <span class="cur" id="step-cur">&#x2014;</span>
+      <span class="sep">/</span>
+      <span class="tot" id="step-total">&#x2014;</span>
+    </div>
+    <div class="step-node-pill empty" id="step-pill">no run yet</div>
+    <div class="tl-track" id="tl-track"></div>
+    <div class="graph-btns">
+      <button class="dbg-btn" id="btn-fit" title="Fit graph">&#x229F;</button>
+      <button class="dbg-btn" id="btn-relayout" title="Relayout">&#x27F3;</button>
+    </div>
+    <div class="kbd-hint">
+      <span><span class="kbd">&larr;</span><span class="kbd">&rarr;</span> step</span>
+      <span><span class="kbd">Home</span><span class="kbd">End</span> jump</span>
+    </div>
+  </div>
+
+  <div id="layout">
+    <div id="graph-pane">
+      <div id="cy"></div>
+    </div>
+    <div id="inspect">
+      <div class="insp-hdr">
+        <div class="insp-node-name" id="insp-title"><em>select a step</em></div>
+      </div>
+      <div id="llm-strip"></div>
+      <div id="tool-strip"></div>
+      <div id="insp-body">
+        <div class="empty-state">
+          <div class="big">Step through the run.</div>
+          <div class="hint">
+            &#x25B6; / &#x25C0; &nbsp;&middot;&nbsp; step forward &amp; backward<br>
+            keyboard: &larr; &rarr; to step, Home / End to jump<br>
+            click any node &nbsp;&middot;&nbsp; jump to its execution<br>
+            click a timeline dot &nbsp;&middot;&nbsp; jump to any step
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const S = { graph: null, steps: [], starts: {}, currentStep: -1, runComplete: false, _doneTimer: null };
+    let cy = null;
+
+    async function init() {
+      const res = await fetch('/api/graph');
+      S.graph = await res.json();
+      buildGraph(S.graph);
+      document.getElementById('btn-first').onclick = () => goToStep(0);
+      document.getElementById('btn-prev').onclick = () => goToStep(S.currentStep - 1);
+      document.getElementById('btn-next').onclick = () => goToStep(S.currentStep + 1);
+      document.getElementById('btn-last').onclick = () => goToStep(S.steps.length - 1);
+      document.getElementById('btn-fit').onclick = () => cy && cy.animate({ fit: { padding: 50 }, duration: 300 });
+      document.getElementById('btn-relayout').onclick = reLayout;
+      document.addEventListener('keydown', onKey);
+      connectWS();
+    }
+
+    function buildGraph(graph) {
+      const els = [];
+      for (const n of graph.nodes) els.push({ data: { id: n.id, label: n.name, kind: n.type }, classes: n.type });
+      for (const e of graph.edges) els.push({ data: { id: e.source + '->' + e.target, source: e.source, target: e.target, conditional: e.conditional, label: e.label || '' }, classes: e.conditional ? 'cond' : 'direct' });
+      try {
+        cy = cytoscape({
+          container: document.getElementById('cy'), elements: els,
+          layout: { name: 'dagre', rankDir: 'TB', nodeSep: 64, rankSep: 90 },
+          style: cyStyle(), wheelSensitivity: 0.3, minZoom: 0.2, maxZoom: 3
+        });
+        if (cy) {
+          cy.on('tap', 'node', evt => { const id = evt.target.id(); if (id === '__start__' || id === '__end__') return; jumpToNodeAtStep(id); });
+          setTimeout(() => cy.animate({ fit: { padding: 50 }, duration: 400 }), 80);
+        }
+      } catch (e) { console.warn('cy init failed:', e); cy = null; }
+      document.getElementById('waiting').classList.add('hidden');
+      setTimeout(() => { const w = document.getElementById('waiting'); if (w) w.remove(); }, 450);
+    }
+
+    function cyStyle() {
+      return [
+        { selector: 'node', style: { label: 'data(label)', 'text-valign': 'center', 'text-halign': 'center', 'font-family': 'Fraunces, serif', 'font-size': 14, 'font-weight': 500, color: '#18160f', 'background-color': '#f2ede3', 'border-width': 1.5, 'border-color': '#8a8478', shape: 'round-rectangle', padding: '13px', width: 'label', height: 'label', 'text-wrap': 'wrap', 'transition-property': 'border-color,border-width,background-color,opacity', 'transition-duration': 160 } },
+        { selector: 'node.start', style: { 'background-color': '#2e6642', color: '#f2ede3', 'border-color': '#2e6642', 'font-family': 'JetBrains Mono, monospace', 'font-size': 10, 'font-weight': 600, 'text-transform': 'uppercase', 'letter-spacing': '0.12em' } },
+        { selector: 'node.end', style: { 'background-color': '#8a1e1e', color: '#f2ede3', 'border-color': '#8a1e1e', 'font-family': 'JetBrains Mono, monospace', 'font-size': 10, 'font-weight': 600, 'text-transform': 'uppercase', 'letter-spacing': '0.12em' } },
+        { selector: 'node.s-active', style: { 'border-color': '#1d4ed8', 'border-width': 3, 'background-color': '#e8eefb', color: '#1d4ed8' } },
+        { selector: 'node.s-done', style: { 'border-color': '#2e6642', 'border-width': 2, 'background-color': '#e4f0e8', color: '#2e6642' } },
+        { selector: 'node.s-error', style: { 'border-color': '#8a1e1e', 'border-width': 2.5, 'background-color': '#f5e4e4', color: '#8a1e1e' } },
+        { selector: 'node.s-idle', style: { 'border-color': '#c8bfaa', 'border-width': 1.5, 'background-color': '#f2ede3', color: '#a09890', opacity: 0.7 } },
+        { selector: 'edge', style: { width: 1.5, 'line-color': '#c8bfaa', 'target-arrow-color': '#c8bfaa', 'target-arrow-shape': 'triangle', 'target-arrow-fill': 'filled', 'arrow-scale': 1, 'curve-style': 'bezier', label: 'data(label)', 'font-family': 'JetBrains Mono, monospace', 'font-size': 10, color: '#8a8478', 'text-background-color': '#f2ede3', 'text-background-opacity': 1, 'text-background-padding': 2, 'transition-property': 'line-color,target-arrow-color,width', 'transition-duration': 160 } },
+        { selector: 'edge.cond', style: { 'line-style': 'dashed', 'line-dash-pattern': [6, 4] } },
+        { selector: 'edge.e-active', style: { 'line-color': '#1d4ed8', 'target-arrow-color': '#1d4ed8', width: 2.5 } },
+        { selector: 'edge.e-done', style: { 'line-color': '#2e6642', 'target-arrow-color': '#2e6642', width: 2 } },
+      ];
+    }
+
+    function reLayout() { if (!cy) return; cy.layout({ name: 'dagre', rankDir: 'TB', nodeSep: 64, rankSep: 90 }).run(); setTimeout(() => cy.animate({ fit: { padding: 50 }, duration: 300 }), 200); }
+
+    function connectWS() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(proto + '//' + location.host + '/ws');
+      ws.onmessage = ev => ingestEvent(JSON.parse(ev.data));
+      ws.onclose = () => setTimeout(connectWS, 1500);
+    }
+
+    function ingestEvent(ev) {
+      if (ev.type === 'node_start') {
+        S.starts[ev.execution_id] = ev;
+        setRunStatus('running', 'running \u00b7 ' + ev.node);
+      } else if (ev.type === 'node_end' || ev.type === 'node_error') {
+        const start = S.starts[ev.execution_id] || null;
+        S.steps.push({ start, end: ev, node: ev.node, type: ev.type });
+        rebuildTimeline();
+        if (S.currentStep === S.steps.length - 2 || S.currentStep === -1) goToStep(S.steps.length - 1);
+        clearTimeout(S._doneTimer);
+        S._doneTimer = setTimeout(() => { S.runComplete = true; setRunStatus('done', 'done \u00b7 ' + S.steps.length + ' steps'); }, 600);
+      }
+    }
+
+    function goToStep(idx) {
+      if (!S.steps.length) return;
+      idx = Math.max(0, Math.min(S.steps.length - 1, idx));
+      S.currentStep = idx;
+      applyStepToGraph(idx);
+      renderInspector(idx);
+      updateControls(idx);
+      scrollTLTo(idx);
+    }
+
+    function applyStepToGraph(idx) {
+      if (!cy) return;
+      const doneNodes = new Set(), errorNodes = new Set(); let activeNode = null;
+      for (let i = 0; i <= idx; i++) { const s = S.steps[i]; if (s.type === 'node_error') errorNodes.add(s.node); else doneNodes.add(s.node); if (i === idx) activeNode = s.node; }
+      cy.nodes().forEach(n => { const id = n.id(); n.removeClass('s-idle s-done s-active s-error'); if (id === '__start__' || id === '__end__') return; if (id === activeNode) n.addClass(S.steps[idx].type === 'node_error' ? 's-error' : 's-active'); else if (errorNodes.has(id) && !doneNodes.has(id)) n.addClass('s-error'); else if (doneNodes.has(id)) n.addClass('s-done'); else n.addClass('s-idle'); });
+      const doneEdges = new Set(); let activeEdge = null;
+      for (let i = 0; i <= idx; i++) { if (i === 0) continue; const prev = S.steps[i - 1].node, cur = S.steps[i].node, eid = findEdge(prev, cur); if (eid) { if (i === idx) activeEdge = eid; else doneEdges.add(eid); } }
+      cy.edges().forEach(e => { e.removeClass('e-active e-done'); if (e.id() === activeEdge) e.addClass('e-active'); else if (doneEdges.has(e.id())) e.addClass('e-done'); });
+      if (activeNode) { const n = cy.getElementById(activeNode); if (n && n.length) cy.animate({ center: { eles: n }, zoom: Math.max(cy.zoom(), 0.75), duration: 220, easing: 'ease-in-out-quad' }); }
+    }
+
+    function findEdge(from, to) { let f = null; cy.edges().forEach(e => { if (e.data('source') === from && e.data('target') === to) f = e.id(); }); return f; }
+
+    function renderInspector(idx) {
+      const step = S.steps[idx];
+      document.getElementById('insp-title').innerHTML = '<em>/</em> ' + esc(step.node);
+      const eb = document.querySelector('.insp-hdr .step-badge'); if (eb) eb.remove();
+      const badge = document.createElement('div'); badge.className = 'step-badge' + (step.type === 'node_error' ? ' error' : ''); badge.textContent = 'step ' + (idx + 1);
+      document.querySelector('.insp-hdr').appendChild(badge);
+      const llmCalls = (step.end && step.end.llm_calls) || [];
+      renderLLMStrip(llmCalls); renderToolStrip(llmCalls);
+      let visitNum = 0, totalVisits = 0;
+      S.steps.forEach((s, i) => { if (s.node === step.node) { totalVisits++; if (i <= idx) visitNum++; } });
+      let html = '';
+      if (step.type === 'node_error' && step.end && step.end.error) { const err = step.end.error; html += '<div class="io-block"><div class="io-label"><span class="badge err">error</span></div><div class="error-block">' + esc(err.type) + ': ' + esc(err.message) + '\n\n' + esc(err.traceback || '') + '</div></div>'; }
+      if (totalVisits > 1) html += '<div class="visit-info">visit <strong>' + visitNum + '</strong> of <strong>' + totalVisits + '</strong> &nbsp;&middot;&nbsp; this node ran ' + totalVisits + '&times; in this run</div>';
+      html += '<div class="io-block"><div class="io-label">input <span class="badge in">&rarr; node</span></div>' + (step.start ? renderValue(step.start.input) : '<div class="json-box muted">no input captured</div>') + '</div>';
+      html += '<div class="io-block"><div class="io-label">output <span class="badge out">node &rarr;</span></div>' + (step.end && step.type === 'node_end' ? renderValue(step.end.output) : '<div class="json-box muted">no output &mdash; node errored</div>') + '</div>';
+      const dur = step.end && step.end.duration_ms, ts = step.end && step.end.timestamp;
+      html += '<div class="meta-row">' + (ts ? '<span><span class="mk">at</span>' + esc(ts) + '</span>' : '') + (dur != null ? '<span><span class="mk">duration</span>' + dur.toFixed(2) + ' ms</span>' : '') + (step.start ? '<span><span class="mk">exec</span>' + esc(step.start.execution_id.slice(0, 8)) + '&hellip;</span>' : '') + '</div>';
+      document.getElementById('insp-body').innerHTML = html;
+    }
+
+    function renderLLMStrip(llmCalls) {
+      const strip = document.getElementById('llm-strip');
+      if (!llmCalls.length) { strip.className = ''; strip.innerHTML = ''; return; }
+      let model = null, inTok = 0, outTok = 0, totTok = 0, hasTokens = false;
+      for (const c of llmCalls) {
+        if (c.model && !model) model = c.model;
+        if (c.tokens) { if (c.tokens.input != null) { inTok += c.tokens.input; hasTokens = true; } if (c.tokens.output != null) { outTok += c.tokens.output; hasTokens = true; } if (c.tokens.total != null) { totTok += c.tokens.total; hasTokens = true; } }
+      }
+      if (!totTok && inTok && outTok) totTok = inTok + outTok;
+      let html = '';
+      if (model) html += '<div class="llm-chip"><span class="lbl">model</span><span class="model-name">' + esc(model) + '</span></div>';
+      if (hasTokens) html += '<div class="llm-chip"><span class="lbl">tokens</span><span class="tok-in" title="input">&#8593;' + inTok + '</span>&nbsp;<span class="tok-out" title="output">&#8595;' + outTok + '</span>&nbsp;<span class="tok-tot" title="total">= ' + totTok + '</span></div>';
+      if (llmCalls.length > 1) html += '<div class="llm-chip"><span class="lbl">llm calls</span>' + llmCalls.length + '</div>';
+      strip.innerHTML = html; strip.className = 'visible';
+    }
+
+    function renderToolStrip(llmCalls) {
+      const strip = document.getElementById('tool-strip');
+      const allCalls = llmCalls.flatMap(c => c.tool_calls || []);
+      if (!allCalls.length) { strip.className = ''; strip.innerHTML = ''; return; }
+      strip.innerHTML = allCalls.map(tc => {
+        const args = typeof tc.args === 'object' ? JSON.stringify(tc.args, null, 2) : String(tc.args || '');
+        return '<div class="tool-call-row"><div class="tc-icon">&#9881;</div><div class="tc-body"><div class="tc-name">' + esc(tc.name || '?') + '</div>' + (args && args !== '{}' ? '<div class="tc-args">' + esc(args) + '</div>' : '') + '</div></div>';
+      }).join('');
+      strip.className = 'visible';
+    }
+
+    function rebuildTimeline() {
+      const track = document.getElementById('tl-track'); track.innerHTML = '';
+      S.steps.forEach((step, i) => {
+        const cls = i < S.currentStep ? 'done' : i === S.currentStep ? 'active' : '';
+        const errCls = step.type === 'node_error' ? ' error' : '';
+        const el = document.createElement('div'); el.className = 'tl-item ' + cls + errCls;
+        el.title = 'Step ' + (i + 1) + ': ' + step.node;
+        el.innerHTML = '<div class="tl-dot"></div><div class="tl-name">' + esc(step.node) + '</div>';
+        el.onclick = () => goToStep(i); track.appendChild(el);
+      });
+    }
+
+    function scrollTLTo(idx) { const items = document.querySelectorAll('.tl-item'); if (items[idx]) items[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); }
+
+    function updateControls(idx) {
+      const total = S.steps.length;
+      document.getElementById('step-cur').textContent = idx + 1;
+      document.getElementById('step-total').textContent = total;
+      document.getElementById('btn-prev').disabled = idx <= 0;
+      document.getElementById('btn-first').disabled = idx <= 0;
+      document.getElementById('btn-next').disabled = idx >= total - 1;
+      document.getElementById('btn-last').disabled = idx >= total - 1;
+      const pill = document.getElementById('step-pill');
+      pill.textContent = S.steps[idx].node; pill.className = 'step-node-pill';
+      rebuildTimeline();
+    }
+
+    function jumpToNodeAtStep(nodeId) {
+      let best = -1;
+      for (let i = S.currentStep; i >= 0; i--)if (S.steps[i].node === nodeId) { best = i; break; }
+      if (best === -1) for (let i = S.currentStep + 1; i < S.steps.length; i++)if (S.steps[i].node === nodeId) { best = i; break; }
+      if (best !== -1) goToStep(best);
+    }
+
+    function onKey(e) {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goToStep(S.currentStep + 1); }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goToStep(S.currentStep - 1); }
+      if (e.key === 'Home') { e.preventDefault(); goToStep(0); }
+      if (e.key === 'End') { e.preventDefault(); goToStep(S.steps.length - 1); }
+    }
+
+    function setRunStatus(cls, text) { document.getElementById('run-status').className = 'run-status ' + cls; document.getElementById('run-status-text').textContent = text; }
+
+    function renderValue(val) {
+      if (looksLikeChat(val)) return '<div class="chat-wrap">' + renderChat(val) + '</div>';
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        const chatKey = Object.keys(val).find(k => looksLikeChat(val[k]));
+        if (chatKey) { const rest = Object.fromEntries(Object.entries(val).filter(([k]) => k !== chatKey)); return '<div style="margin-bottom:8px"><div class="io-label" style="margin-bottom:5px">' + esc(chatKey) + '</div><div class="chat-wrap">' + renderChat(val[chatKey]) + '</div></div>' + (Object.keys(rest).length ? '<div class="json-box">' + renderJson(rest, 0) + '</div>' : ''); }
+      }
+      return '<div class="json-box">' + renderJson(val, 0) + '</div>';
+    }
+
+    function looksLikeChat(val) { if (!Array.isArray(val) || !val.length) return false; return val.every(m => m && typeof m === 'object' && ('role' in m || 'type' in m) && ('parts' in m || 'content' in m)); }
+
+    function renderChat(msgs) {
+      return msgs.map(m => {
+        const role = (m.role || m.type || 'message').toLowerCase();
+        const cls = ['user', 'human'].includes(role) ? 'user' : ['model', 'ai', 'assistant'].includes(role) ? 'model' : 'tool';
+        let inner = '<div class="role">' + esc(role) + '</div>';
+        const parts = Array.isArray(m.parts) ? m.parts : (typeof m.content === 'string' ? [{ text: m.content }] : (Array.isArray(m.content) ? m.content : []));
+        for (const p of parts) {
+          if (typeof p === 'string') { inner += '<div class="text">' + esc(p) + '</div>'; continue; }
+          if (p.text) { inner += '<div class="text">' + esc(p.text) + '</div>'; continue; }
+          if (p.functionCall || p.function_call) { const fc = p.functionCall || p.function_call; inner += '<div class="fcall"><span class="fn">&rarr; ' + esc(fc.name || '') + '(</span>' + esc(JSON.stringify(fc.args || fc.arguments || {}, null, 2)) + '<span class="fn">)</span></div>'; }
+          else if (p.functionResponse || p.function_response) { const fr = p.functionResponse || p.function_response; inner += '<div class="fcall resp"><span class="fn">&larr; ' + esc(fr.name || '') + ':</span> ' + esc(JSON.stringify(fr.response || fr.result || {}, null, 2)) + '</div>'; }
+          else inner += '<div class="text">' + esc(JSON.stringify(p)) + '</div>';
+        }
+        if (m.finish_reason && m.finish_reason !== 'STOP') inner += '<div class="finish-warn">&#9888; finish_reason: ' + esc(m.finish_reason) + '</div>';
+        return '<div class="chat-turn ' + cls + '">' + inner + '</div>';
+      }).join('');
+    }
+
+    function renderJson(val, depth) {
+      if (val === null || val === undefined) return '<span class="nl">null</span>';
+      if (typeof val === 'boolean') return '<span class="b">' + val + '</span>';
+      if (typeof val === 'number') return '<span class="n">' + val + '</span>';
+      if (typeof val === 'string') { const s = val.length > 500 ? val.slice(0, 500) + '\u2026' : val; return '<span class="s">"' + esc(s) + '"</span>'; }
+      if (Array.isArray(val)) { if (!val.length) return '[]'; const items = val.map((v, i) => '<div>' + renderJson(v, depth + 1) + (i < val.length - 1 ? ',' : '') + '</div>').join(''); return '<details ' + (depth < 2 ? 'open' : '') + '><summary>[ <span class="muted">' + val.length + ' items</span> ]</summary><div class="nested">' + items + '</div></details>'; }
+      if (typeof val === 'object') { const keys = Object.keys(val); if (!keys.length) return '{}'; if (val.__repr__) return '<span class="muted">&lt;' + esc(val.__class__ || 'obj') + ' ' + esc(val.__repr__) + '&gt;</span>'; if (val.__type__ === 'bytes') return '<span class="muted">&lt;bytes ' + val.length + 'B: ' + esc(val.preview) + '&gt;</span>'; const items = keys.map((k, i) => '<div><span class="k">"' + esc(k) + '"</span>: ' + renderJson(val[k], depth + 1) + (i < keys.length - 1 ? ',' : '') + '</div>').join(''); return '<details ' + (depth < 2 ? 'open' : '') + '><summary>{ <span class="muted">' + keys.length + ' keys</span> }</summary><div class="nested">' + items + '</div></details>'; }
+      return esc(String(val));
+    }
+
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+    init();
+  </script>
+</body>
+
+</html>
