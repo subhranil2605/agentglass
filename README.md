@@ -4,7 +4,7 @@
 
 AgentGlass renders your agent's execution as an interactive graph — live, in your browser, with zero cloud dependency. Step forward and backward through every node execution, inspect exact input/output state at each step, and see inside nodes: the LLM call, its token counts, model name, and every tool call it made. One `with` block. No login. No data leaves your machine.
 
-![AgentGlass screenshot](assets/screenshot.png)
+![AgentGlass screenshot](assets/screenshot.jpg)
 
 ---
 
@@ -182,73 +182,22 @@ These are not in the current release but are planned or under consideration:
 
 ## Contributing
 
-Contributions are welcome. AgentGlass has four loosely-coupled components — `core/tracer.py`, `core/store.py`, `api/server.py`, and `api/static/index.html` — so most changes touch only one of them.
-
-### Setup
+Contributions are welcome! AgentGlass is designed with clear separation of concerns — most changes touch only one component.
 
 ```bash
-git clone https://github.com/yourname/agentglass
+# Quick setup
+git clone https://github.com/subhranil2605/agentglass
 cd agentglass
 uv sync
-uv pip install -e .
-
-# Run the mock agent to verify everything works
-uv run examples/mock_agent.py
+uv run pytest tests/ -v
 ```
 
-### Reporting a bug
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for:
 
-Open an issue with:
-
-1. A **minimal reproduction** — ideally a self-contained script using the mock agent, not requiring a real API key.
-2. The **AgentGlass version** (`uv pip show agentglass`), Python version, LangGraph version, and OS.
-3. What you expected to happen and what actually happened (screenshot or terminal output).
-
-If the bug is in the graph rendering or the inspector panel, a screenshot of the browser console (`F12 → Console`) is especially helpful.
-
-### Proposing a feature
-
-Open an issue tagged `enhancement` before writing code. Describe:
-
-- The **problem** you're solving (not just the solution).
-- Which component it affects — tracer, store, server, or UI.
-- Whether it requires changes to the data model (the event schema in `core/store.py`).
-
-Small, focused features with a clear use case are much easier to review than large multi-component changes.
-
-### Submitting a pull request
-
-```bash
-# 1. Fork and clone
-git clone https://github.com/your-fork/agentglass
-
-# 2. Create a branch
-git checkout -b fix/tool-calls-not-showing
-
-# 3. Make your changes
-# 4. Test with both mock and (if applicable) a real agent
-
-# 5. Open a PR against main
-# PR description should explain: what changed, why, and how to test it
-```
-
-**PR guidelines:**
-
-- One logical change per PR. If you're fixing a bug and adding a feature, split them.
-- If you're changing the event schema (adding fields to `node_end` events, etc.), update both `core/tracer.py` and the relevant rendering code in `api/static/index.html`.
-- The UI is a single-file `api/static/index.html` — keep it that way unless there's a compelling reason to add a build step.
-- No new runtime dependencies without discussion first. The current dependency surface (`fastapi`, `uvicorn`, `langchain-core`, `langgraph`, `websockets`) is intentionally small.
-
-### Component guide
-
-| File | What it does | When to touch it |
-|---|---|---|
-| `src/agentglass/core/tracer.py` | LangChain callback handler; captures node I/O and sub-runs | Callback firing bugs, new sub-run types, token extraction |
-| `src/agentglass/core/store.py` | Thread-safe in-memory event buffer with pub/sub | Event schema changes, persistence work |
-| `src/agentglass/api/server.py` | FastAPI server; REST + WebSocket | New API endpoints, auth, performance |
-| `src/agentglass/api/static/index.html` | Single-file UI: graph + step debugger + inspector | Anything visual |
-| `src/agentglass/graph/graph_extract.py` | Extracts node/edge structure from a compiled LangGraph | LangGraph API changes, subgraph support |
-| `src/agentglass/core/serialization.py` | Safe JSON serialization for arbitrary Python state | New object types, size cap tuning |
+- Development setup and architecture overview
+- Code style and testing guidelines
+- How to report bugs and propose features
+- Pull request process
 
 ---
 
